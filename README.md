@@ -77,7 +77,7 @@ Streamlit Web Application
 ## 📁 Project Structure
 
 ```text
-Sleep-Health-Prediction/
+SleepIQ/
 │
 │
 ├── artifacts/
