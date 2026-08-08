@@ -48,7 +48,6 @@ The project uses the **Sleep Health and Lifestyle Dataset**, containing health a
 ```text
 Sleep-Health-Prediction/
 │
-├── app.py
 ├── artifacts/
 ├── app.py
 ├── train_model.py
