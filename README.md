@@ -16,7 +16,7 @@ A Machine Learning project that predicts sleep disorders based on health and lif
 
 ---
 
-## 🛠️ Technologies
+## 🛠️ Technologiesc used
 
 * **Python**
 * **Pandas & NumPy**
