@@ -79,7 +79,14 @@ html, body, [class*="css"] {
 }
 
 /* ── Hide Streamlit chrome (keep header so sidebar toggle works) ── */
-#MainMenu, footer { visibility: hidden; }
+#MainMenu,
+footer,
+[data-testid="stDecoration"],
+[data-testid="stStatusWidget"],
+.viewerBadge_container,
+.viewerBadge_link {
+    display: none !important;
+}
 header[data-testid="stHeader"] { background: transparent !important; }
 .block-container {
     padding: 2rem 2rem 3rem 2rem;
