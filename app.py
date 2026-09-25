@@ -78,25 +78,6 @@ html, body, [class*="css"] {
         var(--bg);
 }
 
-/* ── Hide Streamlit chrome (keep header so sidebar toggle works) ── */
-#MainMenu,
-footer,
-[data-testid="stDecoration"],
-[data-testid="stStatusWidget"],
-.viewerBadge_container,
-.viewerBadge_link {
-    display: none !important;
-}
-header[data-testid="stHeader"] { background: transparent !important; }
-.block-container {
-    padding: 2rem 2rem 3rem 2rem;
-    max-width: 1400px;
-    animation: page-in 0.55s ease-out both;
-}
-@keyframes page-in {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-}
 
 /* ── Sidebar ── */
 [data-testid="stSidebar"] {
