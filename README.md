@@ -179,6 +179,10 @@ The Streamlit application provides an interactive interface where users can ente
 
 The application uses the saved model artifacts from the `artifacts/` folder.
 
+### Live Demo
+
+Try SleepIQ online: [sleepiq-project.streamlit.app](https://sleepiq-project.streamlit.app/)
+
 ---
 
 ## 👥 Team
