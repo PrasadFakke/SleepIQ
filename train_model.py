@@ -19,6 +19,7 @@ import seaborn as sns
 import warnings
 import joblib
 import os
+from pathlib import Path
 
 warnings.filterwarnings('ignore')
 
@@ -34,6 +35,11 @@ from imblearn.over_sampling import SMOTE
 from xgboost import XGBClassifier
 import shap
 
+# Project root (works no matter where the script is launched from)
+BASE_DIR = Path(__file__).resolve().parent
+ARTIFACTS_DIR = BASE_DIR / 'artifacts'
+IMAGES_DIR = BASE_DIR / 'images'
+
 print("✅ All libraries imported successfully!")
 
 # ──────────────────────────────────────────────
@@ -43,7 +49,7 @@ print("\n" + "="*60)
 print("STEP 1 — Loading & Preprocessing Data")
 print("="*60)
 
-data = pd.read_csv('Sleep_health_and_lifestyle_dataset.csv')
+data = pd.read_csv(BASE_DIR / 'Sleep_health_and_lifestyle_dataset.csv')
 data.drop('Person ID', axis=1, inplace=True)
 
 # Group infrequent occupations
@@ -153,9 +159,10 @@ for i, v in enumerate(after.values):
 
 plt.suptitle('Class Distribution Before vs After SMOTE', fontsize=14, fontweight='bold')
 plt.tight_layout()
-plt.savefig('smote_distribution.png', dpi=150, bbox_inches='tight')
+IMAGES_DIR.mkdir(exist_ok=True)
+plt.savefig(IMAGES_DIR / 'smote_distribution.png', dpi=150, bbox_inches='tight')
 plt.close()
-print("✅ smote_distribution.png saved!")
+print("✅ images/smote_distribution.png saved!")
 
 # Quick SMOTE comparison table
 print("\n📋 Model Accuracy Comparison (No SMOTE vs With SMOTE):")
@@ -254,9 +261,9 @@ plt.title('Confusion Matrix — Stacking Ensemble', fontsize=13)
 plt.ylabel('Actual')
 plt.xlabel('Predicted')
 plt.tight_layout()
-plt.savefig('confusion_matrix_stacking.png', dpi=150, bbox_inches='tight')
+plt.savefig(IMAGES_DIR / 'confusion_matrix_stacking.png', dpi=150, bbox_inches='tight')
 plt.close()
-print("✅ confusion_matrix_stacking.png saved!")
+print("✅ images/confusion_matrix_stacking.png saved!")
 
 # ──────────────────────────────────────────────
 # STEP 5 — SHAP Explainability
@@ -274,18 +281,18 @@ shap_values = explainer.shap_values(X_test_df)
 plt.figure()
 shap.summary_plot(shap_values, X_test_df, class_names=le_target.classes_, show=False)
 plt.tight_layout()
-plt.savefig('shap_summary.png', dpi=150, bbox_inches='tight')
+plt.savefig(IMAGES_DIR / 'shap_summary.png', dpi=150, bbox_inches='tight')
 plt.close()
-print("  ✅ shap_summary.png saved!")
+print("  ✅ images/shap_summary.png saved!")
 
 # Bar plot
 plt.figure()
 shap.summary_plot(shap_values, X_test_df, plot_type='bar',
                   class_names=le_target.classes_, show=False)
 plt.tight_layout()
-plt.savefig('shap_importance_bar.png', dpi=150, bbox_inches='tight')
+plt.savefig(IMAGES_DIR / 'shap_importance_bar.png', dpi=150, bbox_inches='tight')
 plt.close()
-print("  ✅ shap_importance_bar.png saved!")
+print("  ✅ images/shap_importance_bar.png saved!")
 
 # Waterfall — single sample
 sample_idx  = 0
@@ -303,9 +310,9 @@ plt.figure()
 shap.plots.waterfall(explanation, show=False)
 plt.title(f"SHAP Waterfall — Sample 0 | Predicted: {pred_label}", fontsize=11)
 plt.tight_layout()
-plt.savefig('shap_waterfall.png', dpi=150, bbox_inches='tight')
+plt.savefig(IMAGES_DIR / 'shap_waterfall.png', dpi=150, bbox_inches='tight')
 plt.close()
-print(f"  ✅ shap_waterfall.png saved! (Prediction: {pred_label})")
+print(f"  ✅ images/shap_waterfall.png saved! (Prediction: {pred_label})")
 
 # ──────────────────────────────────────────────
 # STEP 6 — Save All Artifacts
@@ -314,14 +321,14 @@ print("\n" + "="*60)
 print("STEP 6 — Saving Model Artifacts")
 print("="*60)
 
-os.makedirs('artifacts', exist_ok=True)
+ARTIFACTS_DIR.mkdir(exist_ok=True)
 
-joblib.dump(stacking_model, 'artifacts/stacking_model.pkl')
-joblib.dump(xgb_model,      'artifacts/xgb_model.pkl')
-joblib.dump(scaler,         'artifacts/scaler.pkl')
-joblib.dump(le_target,      'artifacts/le_target.pkl')
-joblib.dump(feature_cols,   'artifacts/feature_cols.pkl')
-joblib.dump(explainer,      'artifacts/shap_explainer.pkl')
+joblib.dump(stacking_model, ARTIFACTS_DIR / 'stacking_model.pkl')
+joblib.dump(xgb_model,      ARTIFACTS_DIR / 'xgb_model.pkl')
+joblib.dump(scaler,         ARTIFACTS_DIR / 'scaler.pkl')
+joblib.dump(le_target,      ARTIFACTS_DIR / 'le_target.pkl')
+joblib.dump(feature_cols,   ARTIFACTS_DIR / 'feature_cols.pkl')
+joblib.dump(explainer,      ARTIFACTS_DIR / 'shap_explainer.pkl')
 
 print("  ✅ stacking_model.pkl")
 print("  ✅ xgb_model.pkl")
@@ -331,104 +338,3 @@ print("  ✅ feature_cols.pkl")
 print("  ✅ shap_explainer.pkl")
 print("\n🎉 Training complete! All models and charts saved.")
 
-
-# ══════════════════════════════════════════════
-# UTILITY FUNCTIONS  (imported by app.py)
-# ══════════════════════════════════════════════
-
-def get_recommendations(stress, sleep_duration, bmi_category, physical_activity, disorder):
-    """
-    Returns (disorder_name: str, recommendations: list[str]).
-    disorder: int  0=Healthy | 1=Insomnia | 2=Sleep Apnea
-    """
-    class_names   = {0: 'Healthy', 1: 'Insomnia', 2: 'Sleep Apnea'}
-    disorder_name = class_names.get(int(disorder), 'Unknown')
-    recs          = []
-
-    # Stress
-    if stress >= 7:
-        recs += [
-            "😰 HIGH STRESS: Practice deep breathing or meditation daily.",
-            "📵 Limit screen time 1 hour before bed.",
-            "📓 Try journaling to offload thoughts before sleep.",
-        ]
-    elif stress >= 5:
-        recs += [
-            "😐 MODERATE STRESS: Light yoga or stretching before bed.",
-            "🕐 Maintain a consistent sleep schedule.",
-        ]
-    else:
-        recs.append("✅ Good stress management — keep it up!")
-
-    # Sleep duration
-    if sleep_duration < 6:
-        recs += [
-            "😴 INSUFFICIENT SLEEP: Aim for 7–9 hours per night.",
-            "☕ Avoid caffeine after 3 PM.",
-        ]
-    elif sleep_duration > 9:
-        recs.append("💤 EXCESSIVE SLEEP may signal a disorder — consult a specialist.")
-    else:
-        recs.append("✅ Sleep duration is in the healthy range (7–9 hrs).")
-
-    # BMI
-    if bmi_category == 2:
-        recs += [
-            "⚖️ OBESE BMI: Weight management may reduce Sleep Apnea risk.",
-            "🥗 Consult a nutritionist for a personalised plan.",
-        ]
-    elif bmi_category == 1:
-        recs.append("⚖️ OVERWEIGHT: Regular cardio exercise is recommended.")
-    else:
-        recs.append("✅ BMI is in the normal range.")
-
-    # Physical activity
-    if physical_activity < 30:
-        recs += [
-            "🏃 LOW ACTIVITY: Aim for 30 min of moderate exercise daily.",
-            "🌙 Avoid intense workouts within 2 hours of bedtime.",
-        ]
-    elif physical_activity >= 60:
-        recs.append("✅ Great physical activity level — well done!")
-    else:
-        recs.append("🏃 Moderate activity — try to build up gradually.")
-
-    # Disorder-specific
-    if disorder == 1:
-        recs += [
-            "🌙 INSOMNIA: Consider Cognitive Behavioural Therapy (CBT-I).",
-            "❄️ Keep bedroom cool, dark, and quiet.",
-            "🚫 Avoid naps longer than 20 minutes.",
-        ]
-    elif disorder == 2:
-        recs += [
-            "😤 SLEEP APNEA: Consult a doctor about CPAP therapy.",
-            "🛌 Sleep on your side instead of your back.",
-            "🚫 Avoid alcohol and sedatives before sleep.",
-        ]
-    else:
-        recs.append("🎉 HEALTHY: Maintain your current lifestyle habits!")
-
-    return disorder_name, recs
-
-
-def sleep_risk_score(stress, sleep_duration, bmi_category, physical_activity):
-    """
-    Calculate a 0–100 sleep risk score.
-    Returns: (score: float, risk_level: str)
-    """
-    score  = 0
-    score += min(stress * 3.75, 30)
-    score += 25 if sleep_duration < 6 else (15 if sleep_duration < 7 else 0)
-    score += bmi_category * 12.5
-    score += max(0, (60 - physical_activity) / 60 * 20)
-    score  = min(score, 100)
-
-    if score < 30:
-        risk_level = "🟢 Low Risk"
-    elif score < 60:
-        risk_level = "🟡 Moderate Risk"
-    else:
-        risk_level = "🔴 High Risk"
-
-    return round(score, 1), risk_level

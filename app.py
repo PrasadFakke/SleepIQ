@@ -18,10 +18,16 @@ import shap
 import warnings
 import time
 import os
+from pathlib import Path
 
 warnings.filterwarnings('ignore')
 
-from train_model import get_recommendations, sleep_risk_score
+from utils import get_recommendations, sleep_risk_score
+
+# Project root (works no matter where the app is launched from)
+BASE_DIR = Path(__file__).resolve().parent
+ARTIFACTS_DIR = BASE_DIR / 'artifacts'
+IMAGES_DIR = BASE_DIR / 'images'
 
 # ══════════════════════════════════════════════════════════════
 # PAGE CONFIG  — must be first Streamlit call
@@ -65,16 +71,31 @@ html, body, [class*="css"] {
     background-color: var(--bg);
     color: var(--text);
 }
-.stApp { background: var(--bg); }
+.stApp {
+    background:
+        linear-gradient(180deg, rgba(15, 27, 48, 0.72) 0%, rgba(8, 12, 20, 0) 28rem),
+        repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.025) 0, rgba(148, 163, 184, 0.025) 1px, transparent 1px, transparent 72px),
+        var(--bg);
+}
 
-/* ── Hide Streamlit chrome ── */
-#MainMenu, footer, header { visibility: hidden; }
-.block-container { padding: 1.5rem 2rem 2rem 2rem; max-width: 1400px; }
+/* ── Hide Streamlit chrome (keep header so sidebar toggle works) ── */
+#MainMenu, footer { visibility: hidden; }
+header[data-testid="stHeader"] { background: transparent !important; }
+.block-container {
+    padding: 2rem 2rem 3rem 2rem;
+    max-width: 1400px;
+    animation: page-in 0.55s ease-out both;
+}
+@keyframes page-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 
 /* ── Sidebar ── */
 [data-testid="stSidebar"] {
-    background: var(--surface);
+    background: linear-gradient(180deg, #101a2b 0%, var(--surface) 42%, #0b111c 100%);
     border-right: 1px solid var(--border);
+    box-shadow: 12px 0 40px rgba(0, 0, 0, 0.16);
 }
 [data-testid="stSidebar"] label,
 [data-testid="stSidebar"] .stSelectbox label,
@@ -86,9 +107,71 @@ html, body, [class*="css"] {
     text-transform: uppercase;
     letter-spacing: 0.06em;
 }
-[data-testid="stSidebar"] .stSlider [data-testid="stTickBarMin"],
-[data-testid="stSidebar"] .stSlider [data-testid="stTickBarMax"] {
-    color: var(--muted);
+/* Min / max under the line — reveal on slider hover/focus */
+[data-testid="stSidebar"] .stSlider [data-testid="stSliderTickBar"],
+[data-testid="stSidebar"] .stSlider [data-testid="stSliderTickBar"] p {
+    color: #64748b !important;
+    background: transparent !important;
+    font-weight: 400 !important;
+    font-size: 0.82rem !important;
+    line-height: 1.2 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+}
+[data-testid="stSidebar"] .stSlider [data-testid="stSliderTickBar"] * {
+    color: #64748b !important;
+    background: transparent !important;
+    font-size: 0.82rem !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+}
+[data-testid="stSidebar"] .stSlider:hover [data-testid="stSliderTickBar"],
+[data-testid="stSidebar"] .stSlider:focus-within [data-testid="stSliderTickBar"],
+[data-testid="stSidebar"] .stSlider:hover [data-testid="stSliderTickBar"] *,
+[data-testid="stSidebar"] .stSlider:focus-within [data-testid="stSliderTickBar"] * {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Current value — plain white only, no highlight bubble */
+[data-testid="stSidebar"] [data-testid="stSliderThumbValue"] {
+    color: #ffffff !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.75) !important;
+    padding: 0 !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    line-height: 1.2 !important;
+}
+[data-testid="stSidebar"] [data-testid="stSliderThumbValue"] * {
+    color: #ffffff !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.75) !important;
+    font-size: 1rem !important;
+}
+[data-testid="stSidebar"] [data-testid="stSlider"] [data-testid*="ThumbValue"],
+[data-testid="stSidebar"] [data-testid="stSlider"] [data-testid*="SliderValue"],
+[data-testid="stSidebar"] [data-testid="stSlider"] [role="tooltip"] {
+    color: #ffffff !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+[data-testid="stSidebar"] [data-testid="stSlider"] [data-testid*="ThumbValue"] *,
+[data-testid="stSidebar"] [data-testid="stSlider"] [data-testid*="SliderValue"] *,
+[data-testid="stSidebar"] [data-testid="stSlider"] [role="tooltip"] * {
+    color: #ffffff !important;
+    background: transparent !important;
+}
+[data-testid="stSidebar"] [data-testid="stSlider"]:hover [data-testid*="ThumbValue"],
+[data-testid="stSidebar"] [data-testid="stSlider"]:focus-within [data-testid*="ThumbValue"] {
+    color: #ffffff !important;
+    background: transparent !important;
 }
 
 /* ── Slider accent ── */
@@ -98,10 +181,26 @@ html, body, [class*="css"] {
 
 /* ── Metric cards ── */
 [data-testid="stMetric"] {
-    background: var(--card);
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(145deg, rgba(24, 35, 58, 0.96), rgba(15, 23, 40, 0.96));
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1rem 1.2rem;
+    border-radius: 14px;
+    padding: 1rem 1.15rem;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.14);
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+[data-testid="stMetric"]::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: linear-gradient(180deg, var(--accent3), var(--accent1));
+}
+[data-testid="stMetric"]:hover {
+    transform: translateY(-3px);
+    border-color: #36527d;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
 }
 [data-testid="stMetricLabel"] {
     font-family: var(--font-body);
@@ -114,25 +213,28 @@ html, body, [class*="css"] {
     font-family: var(--font-head);
     font-size: 1.6rem;
     color: var(--text);
+    letter-spacing: 0.01em;
 }
 
 /* ── Tabs ── */
 [data-testid="stTabs"] [data-baseweb="tab-list"] {
-    background: var(--surface);
-    border-radius: 10px;
-    padding: 4px;
+    background: rgba(14, 20, 32, 0.82);
+    border-radius: 12px;
+    padding: 5px;
     gap: 2px;
     border: 1px solid var(--border);
+    box-shadow: inset 0 1px rgba(255, 255, 255, 0.03);
 }
 [data-testid="stTabs"] [data-baseweb="tab"] {
     font-family: var(--font-body);
     font-size: 0.82rem;
     font-weight: 500;
     color: var(--muted);
-    border-radius: 8px;
-    padding: 0.45rem 1.1rem;
+    border-radius: 9px;
+    padding: 0.55rem 1.1rem;
     border: none !important;
     background: transparent;
+    transition: color 0.2s ease, background 0.2s ease;
 }
 [data-testid="stTabs"] [aria-selected="true"] {
     background: var(--card) !important;
@@ -146,15 +248,20 @@ html, body, [class*="css"] {
     font-weight: 700;
     font-size: 0.9rem;
     letter-spacing: 0.04em;
-    background: linear-gradient(135deg, var(--accent1), var(--accent2));
+    background: linear-gradient(110deg, #3478e5, #1bb8c9 52%, #22d3a0);
     color: #fff;
     border: none;
-    border-radius: 10px;
+    border-radius: 11px;
     padding: 0.65rem 1.6rem;
     width: 100%;
-    transition: opacity 0.2s, transform 0.15s;
+    box-shadow: 0 8px 22px rgba(6, 182, 212, 0.18);
+    transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
 }
-.stButton > button:hover { opacity: 0.88; transform: translateY(-1px); }
+.stButton > button:hover {
+    opacity: 0.94;
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(6, 182, 212, 0.28);
+}
 
 /* ── Divider ── */
 hr { border-color: var(--border); opacity: 1; }
@@ -183,16 +290,17 @@ hr { border-color: var(--border); opacity: 1; }
 
 /* ── Custom HTML cards ── */
 .iq-card {
-    background: var(--card);
+    background: linear-gradient(145deg, rgba(19, 27, 46, 0.98), rgba(14, 20, 32, 0.98));
     border: 1px solid var(--border);
     border-radius: 14px;
     padding: 1.4rem 1.6rem;
     margin-bottom: 1rem;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
 }
 .iq-card-accent {
-    background: linear-gradient(135deg, #0e1a35 0%, #13243d 100%);
-    border: 1px solid var(--accent1);
-    box-shadow: 0 0 24px rgba(79,142,247,0.08);
+    background: linear-gradient(135deg, #102442 0%, #13243d 55%, #12333d 100%);
+    border: 1px solid #356497;
+    box-shadow: 0 0 30px rgba(6, 182, 212, 0.09);
 }
 .iq-label {
     font-family: var(--font-body);
@@ -259,12 +367,12 @@ CLASS_COLORS = {'Healthy': '#22d3a0', 'Insomnia': '#f59e0b', 'Sleep Apnea': '#f4
 # ══════════════════════════════════════════════════════════════
 @st.cache_resource(show_spinner="Loading models…")
 def load_artifacts():
-    model        = joblib.load('artifacts/stacking_model.pkl')
-    xgb_model    = joblib.load('artifacts/xgb_model.pkl')
-    scaler       = joblib.load('artifacts/scaler.pkl')
-    le_target    = joblib.load('artifacts/le_target.pkl')
-    feature_cols = joblib.load('artifacts/feature_cols.pkl')
-    explainer    = joblib.load('artifacts/shap_explainer.pkl')
+    model        = joblib.load(ARTIFACTS_DIR / 'stacking_model.pkl')
+    xgb_model    = joblib.load(ARTIFACTS_DIR / 'xgb_model.pkl')
+    scaler       = joblib.load(ARTIFACTS_DIR / 'scaler.pkl')
+    le_target    = joblib.load(ARTIFACTS_DIR / 'le_target.pkl')
+    feature_cols = joblib.load(ARTIFACTS_DIR / 'feature_cols.pkl')
+    explainer    = joblib.load(ARTIFACTS_DIR / 'shap_explainer.pkl')
     return model, xgb_model, scaler, le_target, feature_cols, explainer
 
 model, xgb_model, scaler, le_target, feature_cols, explainer = load_artifacts()
@@ -413,8 +521,8 @@ with st.sidebar:
     occupation = occ_options[occ_label]
 
     st.markdown("##### 😴 Sleep")
-    sleep_dur  = st.slider("Sleep Duration (hrs)", 5.0, 9.0, 7.0, 0.1)
-    quality    = st.slider("Sleep Quality (1–9)", 4.5, 9.0, 7.0, 0.5)
+    sleep_dur  = st.slider("Sleep Duration (hrs)", 1.0, 12.0, 7.0, 0.1)
+    quality    = st.slider("Sleep Quality (1–10)", 1.0, 10.0, 7.0, 0.5)
 
     st.markdown("##### 💪 Lifestyle")
     stress     = st.slider("Stress Level (1–8)", 1, 8, 5)
@@ -934,13 +1042,15 @@ with tab_shap:
         st.markdown("#### Global Feature Importance (from training data)")
         ci1, ci2 = st.columns(2)
         with ci1:
-            if os.path.exists('shap_importance_bar.png'):
-                st.image('shap_importance_bar.png', caption='Mean |SHAP| — All Samples', use_container_width=True)
+            bar_path = IMAGES_DIR / 'shap_importance_bar.png'
+            if bar_path.exists():
+                st.image(str(bar_path), caption='Mean |SHAP| — All Samples', use_container_width=True)
             else:
                 st.info("Run train_model.py to generate global SHAP plots.")
         with ci2:
-            if os.path.exists('shap_summary.png'):
-                st.image('shap_summary.png', caption='SHAP Beeswarm Summary', use_container_width=True)
+            summary_path = IMAGES_DIR / 'shap_summary.png'
+            if summary_path.exists():
+                st.image(str(summary_path), caption='SHAP Beeswarm Summary', use_container_width=True)
     else:
         st.warning("SHAP explanation could not be computed. Ensure shap_explainer.pkl is in the artifacts/ folder.")
 
@@ -1001,26 +1111,93 @@ with tab_recs:
 
     st.markdown("---")
 
-    # Priority action items
+    # Priority action items (clickable → expand how-to)
     st.markdown("#### 🚀 Top 3 Priority Actions")
-    priority = []
-    if r['stress'] >= 6:    priority.append(("Stress", "Reduce stress to ≤4 — high impact on sleep quality", '#f43f5e'))
-    if r['sleep_dur'] < 7:  priority.append(("Sleep", "Add 30–60 min to nightly sleep duration", '#4f8ef7'))
-    if r['activity'] < 40:  priority.append(("Activity", "Reach 45+ min of moderate exercise daily", '#22d3a0'))
-    if r['bmi'] >= 2:       priority.append(("BMI", "Work with a nutritionist on weight management", '#7c3aed'))
+    st.caption("Click an action to see step-by-step guidance.")
 
-    for rank, (area, action, col) in enumerate(priority[:3], 1):
+    priority_details = {
+        "Stress": {
+            "summary": "Reduce stress to ≤4 — high impact on sleep quality",
+            "color": "#f43f5e",
+            "steps": [
+                "Try box breathing for 5 minutes (4s in, 4s hold, 4s out, 4s hold).",
+                "Limit news and social media after 8 PM.",
+                "Write down worries 30 minutes before bed so they don't follow you to sleep.",
+                "Aim for a short walk or light stretch when stress spikes during the day.",
+            ],
+        },
+        "Sleep": {
+            "summary": "Add 30–60 min to nightly sleep duration",
+            "color": "#4f8ef7",
+            "steps": [
+                "Move bedtime 15–30 minutes earlier for the next 7 days.",
+                "Keep a fixed wake-up time, including weekends.",
+                "Avoid caffeine after 2–3 PM.",
+                "Dim lights and put phones away 45–60 minutes before bed.",
+            ],
+        },
+        "Activity": {
+            "summary": "Reach 45+ min of moderate exercise daily",
+            "color": "#22d3a0",
+            "steps": [
+                "Start with a 20–30 minute brisk walk most days.",
+                "Prefer morning or afternoon exercise for better sleep.",
+                "Avoid intense workouts within 2 hours of bedtime.",
+                "Track steps and build toward 7,500+ per day.",
+            ],
+        },
+        "BMI": {
+            "summary": "Work with a nutritionist on weight management",
+            "color": "#7c3aed",
+            "steps": [
+                "Even 5–10% weight loss can improve sleep apnea risk.",
+                "Prioritise protein + vegetables at meals; cut late-night snacks.",
+                "Combine diet changes with daily walking.",
+                "Consider consulting a doctor or dietitian for a personalised plan.",
+            ],
+        },
+    }
+
+    priority = []
+    if r['stress'] >= 6:
+        priority.append("Stress")
+    if r['sleep_dur'] < 7:
+        priority.append("Sleep")
+    if r['activity'] < 40:
+        priority.append("Activity")
+    if r['bmi'] >= 2:
+        priority.append("BMI")
+    if not priority:
+        priority = ["Sleep", "Activity", "Stress"]
+
+    if "selected_priority" not in st.session_state:
+        st.session_state.selected_priority = None
+
+    for rank, area in enumerate(priority[:3], 1):
+        meta = priority_details[area]
+        col = meta["color"]
+        btn_label = f"#{rank}  {area} — {meta['summary']}"
+        if st.button(btn_label, key=f"prio_{area}", use_container_width=True):
+            st.session_state.selected_priority = (
+                None if st.session_state.selected_priority == area else area
+            )
+
+    selected = st.session_state.selected_priority
+    if selected and selected in priority_details:
+        meta = priority_details[selected]
+        steps_html = "".join(
+            f'<li style="margin-bottom:0.45rem;color:#c8d4ea;line-height:1.5">{s}</li>'
+            for s in meta["steps"]
+        )
         st.markdown(f"""
-        <div style="display:flex;align-items:center;gap:1rem;background:#131b2e;
-                    border:1px solid {col}44;border-radius:10px;padding:.75rem 1.1rem;margin-bottom:.6rem">
-          <div style="font-family:Syne,sans-serif;font-size:1.4rem;font-weight:800;
-                      color:{col};min-width:1.8rem">#{rank}</div>
-          <div>
-            <div style="font-weight:600;font-size:.88rem;color:{col}">{area}</div>
-            <div style="font-size:.8rem;color:#94a3b8">{action}</div>
-          </div>
+        <div class="iq-card" style="border-color:{meta['color']}55;margin-top:0.6rem">
+          <div style="font-family:Syne,sans-serif;font-weight:700;color:{meta['color']};
+                      margin-bottom:0.55rem">How to act on {selected}</div>
+          <ol style="margin:0;padding-left:1.2rem;font-size:0.88rem">{steps_html}</ol>
         </div>
         """, unsafe_allow_html=True)
+    elif priority:
+        st.info("Select a priority above to unlock practical steps.")
 
 
 # ╔══════════════════════════════╗

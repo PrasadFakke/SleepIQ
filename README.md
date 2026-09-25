@@ -79,8 +79,7 @@ Streamlit Web Application
 ```text
 SleepIQ/
 │
-│
-├── artifacts/
+├── artifacts/          # saved models & preprocessors
 │   ├── feature_cols.pkl
 │   ├── le_target.pkl
 │   ├── scaler.pkl
@@ -88,16 +87,18 @@ SleepIQ/
 │   ├── stacking_model.pkl
 │   └── xgb_model.pkl
 │
+├── images/             # evaluation & SHAP plots
+│   ├── confusion_matrix_stacking.png
+│   ├── shap_importance_bar.png
+│   ├── shap_summary.png
+│   ├── shap_waterfall.png
+│   └── smote_distribution.png
+│
 ├── app.py
 ├── train_model.py
+├── utils.py
 ├── requirements.txt
-├── Sleep_health_and_lifestyle_dataset.csv
-│
-├── confusion_matrix_stacking.png
-├── shap_importance_bar.png
-├── shap_summary.png
-├── shap_waterfall.png
-└── smote_distribution.png
+└── Sleep_health_and_lifestyle_dataset.csv
 ```
 
 ### 📦 Model Artifacts
@@ -187,6 +188,14 @@ The application uses the saved model artifacts from the `artifacts/` folder.
 
 ---
 
+## ⚠️ Limitations
+
+* **Small dataset** (~374 samples). Results can be optimistic; treat accuracy as indicative, not clinical-grade.
+* **SMOTE** creates synthetic minority samples — helpful for training, but evaluation should always use the real (unbalanced) test set.
+* **No external validation**. Performance is reported on a single stratified hold-out split.
+* **Rule-based recommendations and guided Q&A** — not an LLM or medical decision system.
+* Heart rate and very low daily steps are capped during preprocessing to reduce outlier influence; this is a pragmatic choice, not a clinical rule.
+
 ## ⚠️ Disclaimer
 
 This project is developed for **academic and educational purposes**. The predictions should not be considered a substitute for professional medical diagnosis or treatment.
@@ -202,4 +211,5 @@ This project is developed for **academic and educational purposes**. The predict
 ⭐ Star the repository if you find it useful!
 
 </div>
+
 
