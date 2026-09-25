@@ -150,9 +150,9 @@ The project uses **SHAP (SHapley Additive exPlanations)** to understand how diff
 
 The repository includes:
 
-* `shap_importance_bar.png`
-* `shap_summary.png`
-* `shap_waterfall.png`
+* `images/shap_importance_bar.png`
+* `images/shap_summary.png`
+* `images/shap_waterfall.png`
 
 ---
 
@@ -168,8 +168,8 @@ The project evaluates the trained models using:
 
 Additional visualizations include:
 
-* `confusion_matrix_stacking.png`
-* `smote_distribution.png`
+* `images/confusion_matrix_stacking.png`
+* `images/smote_distribution.png`
 
 ---
 
