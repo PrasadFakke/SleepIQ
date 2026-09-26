@@ -13,11 +13,12 @@ health and lifestyle information and receive a predicted sleep disorder category
 
 The application uses the saved model artifacts from the `artifacts/` folder.
 
-### Live Demo
+### Live URL
 
 Try SleepIQ online: [sleepiq-project.streamlit.app](https://sleepiq-project.streamlit.app/)
 
-
+---
+### Project Screenshot
 <img width="1916" height="827" alt="Screenshot 2026-09-26 084117" src="https://github.com/user-attachments/assets/5612ea4f-3446-4220-bfca-82f11702a47f" />
 
 
