@@ -360,8 +360,12 @@ def load_artifacts():
     scaler       = joblib.load(ARTIFACTS_DIR / 'scaler.pkl')
     le_target    = joblib.load(ARTIFACTS_DIR / 'le_target.pkl')
     feature_cols = joblib.load(ARTIFACTS_DIR / 'feature_cols.pkl')
-    explainer    = joblib.load(ARTIFACTS_DIR / 'shap_explainer.pkl')
+
+    # Recreate SHAP explainer instead of loading pickle
+    explainer = shap.TreeExplainer(xgb_model)
+
     return model, xgb_model, scaler, le_target, feature_cols, explainer
+
 
 model, xgb_model, scaler, le_target, feature_cols, explainer = load_artifacts()
 
@@ -571,18 +575,44 @@ if predict_btn:
     h_score      = health_score(stress, sleep_dur, bmi, activity)
     _, recs      = get_recommendations(stress, sleep_dur, bmi, activity, int(prediction))
 
-    # SHAP for this user
-    try:
-        shap_vals    = explainer.shap_values(pd.DataFrame(user_scaled, columns=feature_cols))
-        pred_class   = int(xgb_model.predict(pd.DataFrame(user_scaled, columns=feature_cols))[0])
-        shap_explanation = shap.Explanation(
-            values        = shap_vals[pred_class][0],
-            base_values   = explainer.expected_value[pred_class],
-            data          = user_scaled[0],
-            feature_names = feature_cols
-        )
-    except Exception:
-        shap_explanation = None
+
+# SHAP for this user
+try:
+    shap_input = pd.DataFrame(user_scaled, columns=feature_cols)
+
+    shap_vals = explainer.shap_values(shap_input)
+
+    pred_class = int(xgb_model.predict(shap_input)[0])
+
+    # Handle different SHAP output formats
+    if isinstance(shap_vals, list):
+        class_values = shap_vals[pred_class][0]
+    else:
+        shap_vals = np.asarray(shap_vals)
+
+        if shap_vals.ndim == 3:
+            class_values = shap_vals[0, :, pred_class]
+        else:
+            class_values = shap_vals[0]
+
+    expected = np.asarray(explainer.expected_value)
+
+    if expected.ndim == 0:
+        base_value = float(expected)
+    else:
+        base_value = float(expected.reshape(-1)[pred_class])
+
+    shap_explanation = shap.Explanation(
+        values=class_values,
+        base_values=base_value,
+        data=user_scaled[0],
+        feature_names=feature_cols
+    )
+
+except Exception as e:
+    shap_explanation = None
+    print(f"SHAP calculation error: {e}")
+
 
     st.session_state.results = dict(
         label=label, prediction=int(prediction), proba=proba,
