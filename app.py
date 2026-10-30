@@ -578,7 +578,7 @@ if predict_btn:
 
 # SHAP for this user
 try:
-    user_scaled = scaler.transform(user_input)
+    user_scaled = scaler.transform(model_input)
     shap_input = pd.DataFrame(user_scaled, columns=feature_cols)
 
     shap_vals = explainer.shap_values(shap_input)
