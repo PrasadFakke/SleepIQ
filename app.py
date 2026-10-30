@@ -550,82 +550,116 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 
+
 # ══════════════════════════════════════════════════════════════
 # COMPUTE PREDICTION ON BUTTON CLICK
 # ══════════════════════════════════════════════════════════════
 if predict_btn:
-    gender_enc   = 1 if gender == "Male" else 0
-    sleep_eff    = sleep_dur / quality
-    risk_index   = stress * bmi + heart_rate / 10
+    gender_enc = 1 if gender == "Male" else 0
+    sleep_eff = sleep_dur / quality
+    risk_index = stress * bmi + heart_rate / 10
 
-    model_input  = pd.DataFrame([{
-        'Gender': gender_enc, 'Age': age, 'Occupation': occupation,
-        'Sleep Duration': sleep_dur, 'Quality of Sleep': quality,
-        'Physical Activity Level': activity, 'Stress Level': stress,
-        'BMI Category': bmi, 'Heart Rate': heart_rate, 'Daily Steps': steps,
-        'Systolic Pressure': systolic, 'Diastolic Pressure': diastolic,
-        'Sleep Efficiency': sleep_eff, 'Health Risk Index': risk_index,
+    model_input = pd.DataFrame([{
+        'Gender': gender_enc,
+        'Age': age,
+        'Occupation': occupation,
+        'Sleep Duration': sleep_dur,
+        'Quality of Sleep': quality,
+        'Physical Activity Level': activity,
+        'Stress Level': stress,
+        'BMI Category': bmi,
+        'Heart Rate': heart_rate,
+        'Daily Steps': steps,
+        'Systolic Pressure': systolic,
+        'Diastolic Pressure': diastolic,
+        'Sleep Efficiency': sleep_eff,
+        'Health Risk Index': risk_index,
     }])[feature_cols]
 
-    user_scaled  = scaler.transform(model_input)
-    prediction   = model.predict(user_scaled)[0]
-    proba        = model.predict_proba(user_scaled)[0]
-    label        = le_target.inverse_transform([prediction])[0]
-    risk_s, risk_l = sleep_risk_score(stress, sleep_dur, bmi, activity)
-    h_score      = health_score(stress, sleep_dur, bmi, activity)
-    _, recs      = get_recommendations(stress, sleep_dur, bmi, activity, int(prediction))
-
-
-# SHAP for this user
-try:
+    # Scale input and predict using stacking ensemble
     user_scaled = scaler.transform(model_input)
-    shap_input = pd.DataFrame(user_scaled, columns=feature_cols)
 
-    shap_vals = explainer.shap_values(shap_input)
+    prediction = model.predict(user_scaled)[0]
+    proba = model.predict_proba(user_scaled)[0]
+    label = le_target.inverse_transform([prediction])[0]
 
-    pred_class = int(xgb_model.predict(shap_input)[0])
+    risk_s, risk_l = sleep_risk_score(
+        stress, sleep_dur, bmi, activity
+    )
+    h_score = health_score(stress, sleep_dur, bmi, activity)
 
-    # Handle different SHAP output formats
-    if isinstance(shap_vals, list):
-        class_values = shap_vals[pred_class][0]
-    else:
-        shap_vals = np.asarray(shap_vals)
-
-        if shap_vals.ndim == 3:
-            class_values = shap_vals[0, :, pred_class]
-        else:
-            class_values = shap_vals[0]
-
-    expected = np.asarray(explainer.expected_value)
-
-    if expected.ndim == 0:
-        base_value = float(expected)
-    else:
-        base_value = float(expected.reshape(-1)[pred_class])
-
-    shap_explanation = shap.Explanation(
-        values=class_values,
-        base_values=base_value,
-        data=user_scaled[0],
-        feature_names=feature_cols
+    _, recs = get_recommendations(
+        stress, sleep_dur, bmi, activity, int(prediction)
     )
 
-except Exception as e:
+    # SHAP explanation using XGBoost component
     shap_explanation = None
-    print(f"SHAP calculation error: {e}")
 
+    try:
+        shap_input = pd.DataFrame(
+            user_scaled, columns=feature_cols
+        )
 
+        shap_vals = explainer.shap_values(shap_input)
+
+        pred_class = int(xgb_model.predict(shap_input)[0])
+
+        if isinstance(shap_vals, list):
+            class_values = shap_vals[pred_class][0]
+        else:
+            shap_vals = np.asarray(shap_vals)
+
+            if shap_vals.ndim == 3:
+                class_values = shap_vals[0, :, pred_class]
+            else:
+                class_values = shap_vals[0]
+
+        expected = np.asarray(explainer.expected_value)
+
+        if expected.ndim == 0:
+            base_value = float(expected)
+        else:
+            base_value = float(
+                expected.reshape(-1)[pred_class]
+            )
+
+        shap_explanation = shap.Explanation(
+            values=class_values,
+            base_values=base_value,
+            data=user_scaled[0],
+            feature_names=feature_cols
+        )
+
+    except Exception as e:
+        print(f"SHAP calculation error: {e}")
+
+    # Save results whether SHAP succeeds or fails
     st.session_state.results = dict(
-        label=label, prediction=int(prediction), proba=proba,
-        risk_score=risk_s, risk_level=risk_l, h_score=h_score, recs=recs,
-        sleep_dur=sleep_dur, stress=stress, activity=activity,
-        heart_rate=heart_rate, quality=quality, bmi=bmi,
-        age=age, gender=gender, occ_label=occ_label,
-        steps=steps, systolic=systolic, diastolic=diastolic,
-        sleep_eff=sleep_eff, risk_index=risk_index,
+        label=label,
+        prediction=int(prediction),
+        proba=proba,
+        risk_score=risk_s,
+        risk_level=risk_l,
+        h_score=h_score,
+        recs=recs,
+        sleep_dur=sleep_dur,
+        stress=stress,
+        activity=activity,
+        heart_rate=heart_rate,
+        quality=quality,
+        bmi=bmi,
+        age=age,
+        gender=gender,
+        occ_label=occ_label,
+        steps=steps,
+        systolic=systolic,
+        diastolic=diastolic,
+        sleep_eff=sleep_eff,
+        risk_index=risk_index,
         shap_explanation=shap_explanation,
     )
-    st.session_state.chat_history = []  # reset chat on new prediction
+
+    st.session_state.chat_history = []
 
 
 # ══════════════════════════════════════════════════════════════
